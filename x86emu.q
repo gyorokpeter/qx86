@@ -223,7 +223,7 @@
     state};
 .x86emu.handlers[`DEC]:{[state;inst]
     dest:.x86emu.evalOperand[state;inst[4;0]];
-    state:.x86emu.set[state;inst[4;0];neg[type dest]$dest-1i];
+    state:.x86emu.set[state;inst[4;0];neg[type dest]$$[dest~-32767h;0Nh;dest-1i]];
     state};
 .x86emu.handlers[`ADC]:{[state;inst]
     dest:.x86emu.evalOperand[state;inst[4;0]];
@@ -577,7 +577,7 @@
     state:.x86emu.run/[state;insts];
     state};
 
-.x86emu.unitTest:{
+.x86emu.unitTest1:{
     st:.x86emu.blankState[];
     if[.x86emu.eflags[st]<>514i; {'`failed}[]];
     if[.x86emu.evalOperand[st;(`simm;0xe0)]<>-32; {'`failed}[]];
@@ -595,6 +595,10 @@
     st[`EAX]:0x00 sv 0x000054a2;st[`EBX]:0x00 sv 0x9752c340;if[.x86emu.run[st;.x86das.disasm[0;0x6629d8]][`EAX]<>0x00 sv 0x00009162; {'`failed}[]];
     st[`EAX]:0x00 sv 0x00007fff;if[.x86emu.run[st;.x86das.disasm[0;0x66FFC0]][`EAX]<>0x00 sv 0x00008000; {'`failed}[]];
     st[`EAX]:0x00 sv 0x80000000;st[`EBX]:0x00 sv 0xa6ac48cd;if[.x86emu.run[st;.x86das.disasm[0;0x01C3]][`EBX]<>0x00 sv 0x26AC48CD; {'`failed}[]];
+    };
+
+.x86emu.unitTest2:{
+    st:.x86emu.blankState[];
     st[`EAX]:0x00 sv 0x80000000;st[`EBX]:0x00 sv 0x63C2FD05;if[.x86emu.run[st;.x86das.disasm[0;0x29C3]][`EBX]<>0x00 sv 0xE3C2FD05; {'`failed}[]];
     st[`EDX]:0x00 sv 0x00401080;if[.x86emu.run[st;.x86das.disasm[0;0x00D2]][`ZF]<>1b; {'`failed}[]];
     st[`EDX]:0x00 sv 0x00401080;if[.x86emu.run[st;.x86das.disasm[0;0x00D2]][`CF]<>1b; {'`failed}[]];
@@ -610,6 +614,12 @@
     st[`EAX]:0x00 sv 0x00000082;st[`CF]:0b;if[.x86emu.run[st;.x86das.disasm[0;0x3d007d0000]][`CF]<>1b; {'`failed}[]];
     st[`EAX]:0x00 sv 0x00000001;if[.x86emu.run[st;.x86das.disasm[0;0xc1e008]][`EAX]<>0x00 sv 0x00000100; {'`failed}[]];
     st[`EBX]:0x00 sv 0x000000f2;st[`ECX]:0x00 sv 0x00000010;st[`CF]:1b;if[.x86emu.run[st;.x86das.disasm[0;0xd2db]][`EBX]<>0x00 sv 0x000000cb; {'`failed}[]];
+    st[`EAX]:0x00 sv 0x00008001;if[.x86emu.run[st;.x86das.disasm[0;0x66ffc8]][`EAX]<>0x00 sv 0x00008000; {'`failed}[]]; //DEC AX: 0x00008001 -> 0x00008000
+    };
+
+.x86emu.unitTest:{
+    .x86emu.unitTest1[];
+    .x86emu.unitTest2[];
     };
 
 .x86emu.unitTest[]
