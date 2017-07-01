@@ -19,7 +19,7 @@
             reg:`$p2s 0;
             [scale:"J"$p2s[0]; if[not scale in 1 2 4 8;{'"invalid reg/scale"}[]]]
         ];
-        $[p2s[1] in string .x86das.reg4; 
+        $[p2s[1] in string .x86das.reg4;
             $[null reg;reg:`$p2s 1;{'"can't do reg*reg"}[]];
             $[null scale;
                 [scale:"J"$p2s[1]; if[not scale in 1 2 4 8;{'"invalid reg/scale"}[]]];
@@ -51,7 +51,7 @@
     if[1<count types`displ;{'"too many displacements"}[]];
     if[2<sum count each types`base`index`reg;{'"too many registers"}[]];
     if[0<count types`displ; displv:addrparts[types[`displ;0];1]];
-    if[0<count types`base; 
+    if[0<count types`base;
         basereg:addrparts[types[`base;0];1];
         if[0<count types`reg;
             indexreg:addrparts[types[`reg;0];1];
@@ -185,7 +185,7 @@
     };
 
 .x86asm.bitshift:{[subopcode;args]
-    :$[args[1;0]=`imm; 
+    :$[args[1;0]=`imm;
         $[1=args[1;1];
             .x86asm.oneop[0xd0;subopcode;args 0;`$()];
             .x86asm.oneop[0xc0;subopcode;args 0;`$()],`byte$args[1;1]
@@ -259,7 +259,7 @@
     };
 .x86asm.handlers[`POP]:{[addr;args]
     if[args[0;0]=`mem; :.x86asm.oneop[0x8f;0;args 0;`no1byte]];
-    if[args[0;0]=`reg;         
+    if[args[0;0]=`reg;
         $[args[0;1]=`ES;:enlist 0x07;
           args[0;1]=`CS;{'"no instruction for POP CS"}[];
           args[0;1]=`SS;:enlist 0x17;
@@ -438,6 +438,8 @@
 .x86asm.asmAll:{[addr;insts]
     bcs:();
     labels:-1_/:insts where insts like "*:";
+    dupeLabels:where 1<count each group labels;
+    if[0<count dupeLabels; {'"duplicate label: ",x}[", "sv dupeLabels]];
     labelRefs:where each count each/:insts ss\:/:labels;
     labelVal:labels!count[labels]#0Ni;
     addrs:();
@@ -512,6 +514,7 @@
     if[not 0x0102030e0f~.x86asm.asm[0;"DB 0x0102030e0f"];{'"failed"}[]];
     if[not 0xFF15252A7505~.x86asm.asm[0;"CALL DWORD PTR [0x05752a25]"];{'"failed"}[]];
     if[not 0x6695~.x86asm.asm[0;"XCHG AX, BP"];{'"failed"}[]];
+    if[not "duplicate label: L1, L2"~.[.x86asm.asmAll;(100;("L1:";"L1:";"L2:";"L2:"));{x}];{'"failed"}[]];
     };
 .x86asm.unitTest[];
 
