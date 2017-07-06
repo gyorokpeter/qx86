@@ -172,6 +172,7 @@
     };
 
 .x86asm.twoop:{[opcode;args;options]
+    if[all args[;0]=`mem; {'"max. 1 memory argument"}[]];
     if[args[1;0]=`mem;
         args:reverse args;
         opcode:`byte$opcode+2;
@@ -515,6 +516,7 @@
     if[not 0xFF15252A7505~.x86asm.asm[0;"CALL DWORD PTR [0x05752a25]"];{'"failed"}[]];
     if[not 0x6695~.x86asm.asm[0;"XCHG AX, BP"];{'"failed"}[]];
     if[not "duplicate label: L1, L2"~.[.x86asm.asmAll;(100;("L1:";"L1:";"L2:";"L2:"));{x}];{'"failed"}[]];
+    if[not "max. 1 memory argument"~.[.x86asm.asm;(0;("TEST DWORD [0x0], DWORD [0x0]"));{x}];{'"failed"}[]];
     };
 .x86asm.unitTest[];
 
