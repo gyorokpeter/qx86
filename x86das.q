@@ -24,7 +24,7 @@
 .x86das.bcHandler[0x9b]:{[addr;bc;prefixState].x86das.static[addr;bc;`WAIT]};
 .x86das.bcHandler[0xa0]:{[addr;bc;prefixState].x86das.hardcodedArg[addr;bc;5;`MOV;((`reg;`AL);(`mem;1;`DS;`;0;`;.x86util.le2i 4#1_bc))]};
 .x86das.bcHandler[0xa1]:{[addr;bc;prefixState].x86das.hardcodedArg[addr;bc;5;`MOV;((`reg;$[prefixState 0;`AX;`EAX]);(`mem;$[prefixState 0;2;4];`DS;`;0;`;.x86util.le2i 4#1_bc))]};
-.x86das.bcHandler[0xa3]:{[addr;bc;prefixState].x86das.hardcodedArg[addr;bc;5;`MOV;((`mem;$[prefixState 0;2;4];`DS;`;0;`;.x86util.le2i 4#1_bc);(`reg;$[prefixState 0;`AX;`EAX]))]};
+.x86das.bcHandler[0xa3]:{[addr;bc;prefixState].x86das.hardcodedArg[addr;bc;5;`MOV;((`mem;$[prefixState 0;2;4];`DS^prefixState 1;`;0;`;.x86util.le2i 4#1_bc);(`reg;$[prefixState 0;`AX;`EAX]))]};
 .x86das.bcHandler[0xa5]:{[addr;bc;prefixState].x86das.stringOp[addr;bc;`MOVSD;prefixState 2]};
 .x86das.bcHandler[0xc9]:{[addr;bc;prefixState].x86das.static[addr;bc;`LEAVE]};
 .x86das.bcHandler[0xd8]:{[addr;bc;prefixState]
@@ -541,6 +541,7 @@
 `.x86das.unitTestDef insert `addr`bc`result!(0;  0x66,0x95             ;"XCHG AX, BP"                              );
 `.x86das.unitTestDef insert `addr`bc`result!(0;       0xA1401EDE00     ;"MOV EAX, DWORD PTR DS:[0x00de1e40]"       );
 `.x86das.unitTestDef insert `addr`bc`result!(0;       0xA300000000     ;"MOV DWORD PTR DS:[0], EAX"                );
+`.x86das.unitTestDef insert `addr`bc`result!(0;  0x64,0xA300000000     ;"MOV DWORD PTR FS:[0], EAX"                );
 `.x86das.unitTestDef insert `addr`bc`result!(0;       0xC0C805         ;"ROR AL, 0x05"                             );
 `.x86das.unitTestDef insert `addr`bc`result!(0;       0xC1C10E         ;"ROL ECX, 0x0e"                            );
 `.x86das.unitTestDef insert `addr`bc`result!(0;       0xD0D9           ;"RCR CL, 0x01"                             );
