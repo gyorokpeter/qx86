@@ -382,7 +382,8 @@
       1=mode;
         displ:1;
       2=mode;
-        displ:4
+        displ:4;
+      '"bad mode"
     ];
     scale:0;
     if[(3>mode) and rm=4;
@@ -424,7 +425,8 @@
         immbc:$[args[0;0]=`mem; args[0;1];
             args[0;1] in .x86das.reg1;1;
             args[0;1] in .x86das.reg2;2;
-            args[0;1] in .x86das.reg4;4]#bcsize _bc;
+            args[0;1] in .x86das.reg4;4;
+            '"invalid value in args[0;1]"]#bcsize _bc;
         args,:enlist(`imm; .x86util.le2i immbc);
         bcsize+:count immbc;
     ];

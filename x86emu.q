@@ -361,7 +361,7 @@
     state};
 .x86emu.handlers[`SAR]:{[state;inst]
     dest:0b vs .x86emu.evalOperand[state;inst[4;0]];
-    cnt:.x86emu.evalOperand[state;inst[4;1]];
+    cnt:.x86emu.evalOperand[state;inst[4;1]]mod 32;
     temp:0b sv (cnt#first dest),neg[cnt]_dest;
     state:.x86emu.set[state;inst[4;0];temp];
     state};
@@ -615,6 +615,7 @@
     st[`EAX]:0x00 sv 0x00000001;if[.x86emu.run[st;.x86das.disasm[0;0xc1e008]][`EAX]<>0x00 sv 0x00000100; {'`failed}[]];
     st[`EBX]:0x00 sv 0x000000f2;st[`ECX]:0x00 sv 0x00000010;st[`CF]:1b;if[.x86emu.run[st;.x86das.disasm[0;0xd2db]][`EBX]<>0x00 sv 0x000000cb; {'`failed}[]];
     st[`EAX]:0x00 sv 0x00008001;if[.x86emu.run[st;.x86das.disasm[0;0x66ffc8]][`EAX]<>0x00 sv 0x00008000; {'`failed}[]]; //DEC AX: 0x00008001 -> 0x00008000
+    st[`ECX]:0x00 sv 0x00000024;if[.x86emu.run[st;.x86das.disasm[0;0xd2f9]][`ECX]<>0x00 sv 0x00000002; {'`failed}[]]; //SAR CL, CL: 0x24 -> 0x02    
     };
 
 .x86emu.unitTest:{

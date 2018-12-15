@@ -312,7 +312,8 @@
         ;[
         .x86asm.oneop[0xf6;0;args 0;`$()],$[args[0;1] in .x86das.reg1;1;
             args[0;1] in .x86das.reg2;2;
-            args[0;1] in .x86das.reg4;4]#.x86util.i2le args[1;1]
+            args[0;1] in .x86das.reg4;4;
+            '"invalid value in args[0;1]"]#.x86util.i2le args[1;1]
         ]]
     ;.x86asm.twoop[0x84;args;`$()]]};
 .x86asm.handlers[`JO ]:{[addr;args].x86asm.jump[addr;0x0f80;args]};
