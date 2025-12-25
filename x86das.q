@@ -1,6 +1,8 @@
 .x86das.reg1:`AL`CL`DL`BL`AH`CH`DH`BH;
-.x86das.reg2:`AX`CX`DX`BX`SP`BP`SI`DI;
-.x86das.reg4:`EAX`ECX`EDX`EBX`ESP`EBP`ESI`EDI;
+.x86das.reg1alt:`AL`CL`DL`BL`SPL`BPL`SIL`DIL,`$"R",/:string[8+til 8],\:"B";
+.x86das.reg2:`AX`CX`DX`BX`SP`BP`SI`DI,`$"R",/:string[8+til 8],\:"W";;
+.x86das.reg4:`EAX`ECX`EDX`EBX`ESP`EBP`ESI`EDI,`$"R",/:string[8+til 8],\:"D";;
+.x86das.reg8:`RAX`RCX`RDX`RBX`RSP`RBP`RSI`RDI,`$"R",/:string 8+til 8;
 .x86das.sreg:`ES`CS`SS`DS`FS`GS`SEG6`SEG7;
 
 .x86das.bcHandler:()!();
@@ -95,10 +97,10 @@
     if[bc[0]=0x3c;:.x86das.hardcodedWith1imm[addr;bc;`CMP;prefixState;(`reg;`AL)]];
     if[bc[0]=0x3d;:.x86das.hardcodedWith4imm[addr;bc;`CMP;prefixState;(`reg;$[prefixState 0;`AX;`EAX])]];
     if[bc[0]=0x3f;:.x86das.static[addr;bc;`AAS]];
-    if[bc[0]in 0x4041424344454647;:.x86das.hardcodedArg[addr;bc;1;`INC;enlist(`reg;$[prefixState 0;.x86das.reg2;.x86das.reg4]bc[0]-0x40)]];
-    if[bc[0]in 0x48494a4b4c4d4e4f;:.x86das.hardcodedArg[addr;bc;1;`DEC;enlist(`reg;$[prefixState 0;.x86das.reg2;.x86das.reg4]bc[0]-0x48)]];
-    if[bc[0]in 0x5051525354555657;:.x86das.hardcodedArg[addr;bc;1;`PUSH;enlist(`reg;$[prefixState 0;.x86das.reg2;.x86das.reg4]bc[0]-0x50)]];
-    if[bc[0]in 0x58595a5b5c5d5e5f;:.x86das.hardcodedArg[addr;bc;1;`POP;enlist(`reg;$[prefixState 0;.x86das.reg2;.x86das.reg4]bc[0]-0x58)]];
+    if[bc[0]in 0x4041424344454647;:.x86das.hardcodedArg[addr;bc;1;`INC;enlist(`reg;.x86das.getRegMap[prefixState]bc[0]-0x40)]];
+    if[bc[0]in 0x48494a4b4c4d4e4f;:.x86das.hardcodedArg[addr;bc;1;`DEC;enlist(`reg;.x86das.getRegMap[prefixState]bc[0]-0x48)]];
+    if[bc[0]in 0x5051525354555657;:.x86das.hardcodedArg[addr;bc;1;`PUSH;enlist(`reg;.x86das.getRegMap[prefixState]bc[0]-0x50)]];
+    if[bc[0]in 0x58595a5b5c5d5e5f;:.x86das.hardcodedArg[addr;bc;1;`POP;enlist(`reg;.x86das.getRegMap[prefixState]bc[0]-0x58)]];
     if[bc[0]=0x60;:.x86das.static[addr;bc;`PUSHAD]];
     if[bc[0]=0x68;:.x86das.with4imm[addr;bc;`PUSH]];
     if[bc[0]=0x6a;:.x86das.with1imm[addr;bc;`PUSH]];
@@ -218,8 +220,8 @@
     if[bc[0]=0xac;:.x86das.twoopWith1imm[addr;bc;`SHRD;prefixState;`no1byte`forceArgSwap]];
     if[bc[0]=0xad;:.x86das.twoopWithHardcoded[addr;bc;`SHRD;prefixState;`$();(`reg;`CL)]];
     if[bc[0]=0xb3;:.x86das.twoop[addr;bc;`BTR;prefixState;`forceArgSwap]];
-    if[bc[0]in 0xb6;:.x86das.twoop41[addr;bc;`MOVZX;prefixState;`$()]];
-    if[bc[0]in 0xb7;:.x86das.twoop42[addr;bc;`MOVZX;prefixState;`$()]];
+    if[bc[0]=0xb6;:.x86das.twoop41[addr;bc;`MOVZX;prefixState;`$()]];
+    if[bc[0]=0xb7;:.x86das.twoop42[addr;bc;`MOVZX;prefixState;`$()]];
     if[bc[0]=0xbb;:.x86das.twoop[addr;bc;`BTC;prefixState;`forceArgSwap]];
     if[bc[0]=0xbd;:.x86das.twoop[addr;bc;`BSR;prefixState;`denyArgSwap]];
     if[bc[0]=0xbe;:.x86das.twoop42[addr;bc;`MOVSX;prefixState;`$()]];
@@ -247,13 +249,18 @@
 
 .x86das.disasm:{[addr;bc]
     prefix:`byte$();
-    prefixState:(0;`;`);    //(sizeFlag;segment;repeat)
+    prefixState:(0;`;`;00000b);    //(sizeFlag;segment;repeat;REX.WRXBL)
     advanced:0b;
     while[bc[0] in key .x86das.prefix;
         prefixState:.x86das.prefix[bc[0]][prefixState];
         prefix,:1#bc;
         bc:1_bc;
     ];
+    if[64=.x86das.mode;if[bc[0] within 0x404f;
+        prefixState[3]:(-4#0b vs bc 0),1b;
+        prefix,:1#bc;
+        bc:1_bc;
+    ]];
     if[bc[0]=0x0f; advanced:1b; prefix,:1#bc; bc:1_bc];
     res:$[advanced;.x86das.disasm1;.x86das.disasm0][addr;bc;prefixState];
     res[1]:prefix,res[1];
@@ -326,19 +333,22 @@
 
 .x86das.argsstr:{[args]", "sv .x86das.argstr each args};
 
+.x86das.getRegMap:{[prefixState]
+    $[prefixState 0;.x86das.reg2;$[64=.x86das.mode;.x86das.reg8;.x86das.reg4]]};
+
 .x86das.defaultSegment:{[reg]
     $[reg in `ESP`EBP; `SS; `DS]};
 
 .x86das.regTo4:{[reg]
     p:.x86das.reg1?reg;
-    if[p=8; p:.x86das.reg2?reg];
-    if[p=8; :reg];
+    if[p=count .x86das.reg1; p:.x86das.reg2?reg];
+    if[p=count .x86das.reg2; :reg];
     .x86das.reg4 p};
 
 .x86das.regTo2:{[reg]
     p:.x86das.reg1?reg;
-    if[p=8; p:.x86das.reg4?reg];
-    if[p=8; :reg];
+    if[p=count .x86das.reg1; p:.x86das.reg4?reg];
+    if[p=count .x86das.reg4; :reg];
     .x86das.reg2 p};
 
 .x86das.extOpcodes:enlist[`]!enlist(::);
@@ -357,12 +367,13 @@
     size:oc mod 2;
     if[`no1byte in options; size:1];
     if[`force1byte in options; size:0];
-    datasize:$[size;$[prefixState 0;2;4];1];
+    datasize:$[size;$[prefixState 0;2;$[prefixState[3;0];8;4]];1];
     if[`8byte in options; datasize:8];
-    reglist:(1 2 4!(.x86das.reg1;.x86das.reg2;.x86das.reg4))datasize;
+    reglist:(1 2 4 8!(.x86das.reg1;.x86das.reg2;.x86das.reg4;.x86das.reg8))datasize;
+    if[1=datasize;if[prefixState[3;4];reglist:.x86das.reg1alt]];
     modrm:bc 1;
     mode:modrm div 64;
-    regn:(modrm div 8) mod 8;
+    regn:((modrm div 8) mod 8)+8*prefixState[3;1];
     if[instype in key .x86das.extOpcodes;
         instype:.x86das.extOpcodes[instype][regn];
     ];
@@ -376,7 +387,7 @@
     $[3=mode;
         arg:(`reg;$[`fpReg in options;
             `$"ST",string[rm];
-          reglist rm]);
+          reglist rm+8*prefixState[3;3]]);
       0=mode;
         displ:4*rm=5;
       1=mode;
@@ -390,8 +401,8 @@
         pf:3;
         sib:bc 2;
         scale:(1 2 4 8)sib div 64;
-        index:(sib div 8)mod 8;
-        base:sib mod 8;
+        index:((sib div 8)mod 8)+8*prefixState[3;2];
+        base:(sib mod 8)+8*prefixState[3;3];
         if[base=5; displ:4];
     ];
     displv:0;
@@ -399,14 +410,15 @@
         displv:.x86util.le2i displ#pf _bc;
     ];
     bcsize:pf;
+    memregs:$[64=.x86das.mode;.x86das.reg8;.x86das.reg4];
     if[3>mode;
-        basereg:.x86das.reg4 rm;
+        basereg:memregs rm+8*prefixState[3;3];
         if[(mode=0) and rm=5; basereg:`];
         indexreg:`;
         if[3=pf;
-            indexreg:.x86das.reg4 index;
-            if[indexreg=`ESP;indexreg:`];
-            basereg:.x86das.reg4 base;
+            indexreg:memregs index;
+            if[indexreg in`ESP`RSP;indexreg:`];
+            basereg:memregs base;
             if[base=5; basereg:`];
         ];
         arg:(`mem;$[`wordExtend in options;2;datasize];.x86das.defaultSegment[basereg]^prefixState 1;basereg;scale;indexreg;displv);
@@ -581,6 +593,25 @@
 `.x86das.unitTestDef insert `addr`bc`result!(0;  0x66,0xFFC1           ;"INC CX"                                   );
 
 .x86das.unitTest:{
+    .x86das.mode:32;
     {if[not .x86das.disasm[x`addr;x`bc][2]~x`result;{'"failed"}[]]}each .x86das.unitTestDef;
     };
 .x86das.unitTest[]
+
+.x86das.unitTest64Def:([]addr:();bc:();result:());
+`.x86das.unitTest64Def insert `addr`bc`result!(0;enlist 0x57 ;"PUSH RDI"                        );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x4032F6    ;"XOR SIL, SIL"                    );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x418D5002  ;"LEA EDX, DWORD PTR DS:[R8+0x02]" );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x418D0C08  ;"LEA ECX, DWORD PTR DS:[R8+RCX]"  );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x428D0C08  ;"LEA ECX, DWORD PTR DS:[RAX+R9]"  );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x4533C1    ;"XOR R8D, R9D"                    );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x4883EC28  ;"SUB RSP, 0x28"                   );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x48895C2408;"MOV QWORD PTR DS:[RSP+0x08], RBX");
+
+.x86das.unitTest64:{
+    .x86das.mode:64;
+    {if[not .x86das.disasm[x`addr;x`bc][2]~x`result;{'"failed"}[]]}each .x86das.unitTest64Def;
+    };
+.x86das.unitTest64[]
+
+.x86das.mode:32;

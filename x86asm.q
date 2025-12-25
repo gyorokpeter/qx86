@@ -1,7 +1,7 @@
 .x86asm.parseMemPart:{[part]
-    if[part in string .x86das.reg4;
+    if[part in string .x86das.reg4,.x86das.reg8;
         reg:`$part;
-        if[reg=`ESP; :`base,reg];
+        if[reg in`ESP`RSP; :`base,reg];
         :`reg,reg;
     ];
     if[part like "0X*";
@@ -36,7 +36,7 @@
 .x86asm.parseMemArg:{[argstr]
     p:"["vs argstr;
     sizespec:" "vs p 0;
-    datasize:(``BYTE`WORD`DWORD!0N 1 2 4)`$sizespec 0;
+    datasize:(``BYTE`WORD`DWORD`QWORD!0N 1 2 4 8)`$sizespec 0;
     if[null datasize;{'"datasize is required"}[]];
     segment:`;
     if[":" in last sizespec; segment:`$2#-3#last sizespec; if[not segment in`CS`DS`ES`FS`GS`SS; {'"invalid segment"}[]]];
@@ -90,37 +90,47 @@
         :`imm,neg .x86asm.parseHexNum argstr;
     ];
     if["[" in argstr; :.x86asm.parseMemArg[argstr]];
-    if[argstr in string .x86das.reg1,.x86das.reg2,.x86das.reg4,.x86das.sreg;
+    if[argstr in string .x86das.reg1,.x86das.reg1alt,.x86das.reg2,.x86das.reg4,.x86das.reg8,.x86das.sreg;
         :(`reg;`$argstr);
     ];
     {'"unknown arg: ",x}[argstr];
     };
 
 .x86asm.regCode:{[reg]
-    c:.x86das.reg4?reg;
-    if[c=8; c:.x86das.reg2?reg];
-    if[c=8; c:.x86das.reg1?reg];
-    if[c=8; c:.x86das.sreg?reg];
-    if[c=8; {'"unknown register"}[]];
-    c};
+    c:.x86das.reg8?reg; if[c<count .x86das.reg8;:c];
+    c:.x86das.reg4?reg; if[c<count .x86das.reg4;:c];
+    c:.x86das.reg2?reg; if[c<count .x86das.reg2;:c];
+    c:.x86das.reg1?reg; if[c<count .x86das.reg1;:c];
+    c:.x86das.reg1alt?reg; if[c<count .x86das.reg1alt;:c];
+    c:.x86das.sreg?reg; if[c<count .x86das.sreg;:c];
+    {'x}"unknown register ",string reg;
+    };
 
 .x86asm.oneop:{[opcode;reg;arg;options]
     opcode:(),opcode;
+    rex:00000b;
+    if[`altreg in options;rex[4]:1b];
     mode:0;
     rm:0;
     if[arg[0]=`reg;
         mode:3;
         rm:.x86asm.regCode arg[1];
-        if[not `no1byte in options;if[arg[1] in .x86das.reg2,.x86das.reg4; opcode[count[opcode]-1]:`byte$1+last opcode]];
+        if[not `no1byte in options;if[arg[1] in .x86das.reg2,.x86das.reg4,.x86das.reg8; opcode[count[opcode]-1]:`byte$1+last opcode]];
         if[arg[1] in .x86das.reg2; opcode:0x66,opcode];
+        if[arg[1] in .x86das.reg8;rex[0]:1b];
+        if[reg>=8;rex[1]:1b;reg:reg mod 8];
+        if[rm>=8;rex[3]:1b;rm:rm mod 8];
+        if[not rex~00000b;opcode:(0b sv 0100b,-1_rex),opcode];
         :opcode,`byte$(mode*64)+(reg*8)+rm;
     ];
     //(`mem;datasize;segment;basereg;scale;indexreg;displv)
+    datasize:arg[1];
     segment:arg[2];
     basereg:arg[3];
     scale:arg[4];
     indexreg:arg[5];
     displv:arg[6];
+    if[datasize=8;rex[0]:1b];
     if[.x86das.defaultSegment[basereg]<>segment;
         $[segment=`ES; opcode:0x26,opcode;
           segment=`CS; opcode:0x2e,opcode;
@@ -131,15 +141,15 @@
             {'"unknown segment override"}[]
         ];
     ];
-    if[not `no1byte in options;if[arg[1]in 2 4; opcode[count[opcode]-1]:`byte$1+last opcode]];
+    if[not `no1byte in options;if[arg[1]in 2 4 8; opcode[count[opcode]-1]:`byte$1+last opcode]];
     if[arg[1]=2;$[`diffsize in options; opcode[count[opcode]-1]:`byte$opcode[count[opcode]-1]+0x01;opcode:0x66,opcode]];
-    if[(0=displv) and null[indexreg] and not basereg in``ESP;
+    if[(0=displv) and null[indexreg] and not basereg in``ESP`RSP;
         rm:.x86asm.regCode basereg;
         displ:();
         if[basereg=`EBP; mode:1; displ:0x00];
         :opcode,(`byte$(mode*64)+(reg*8)+rm),displ;
     ];
-    if[((0<>displv) and null[indexreg] and basereg<>`ESP) or (0=displv) and null[indexreg] and null[basereg];
+    if[((0<>displv) and null[indexreg] and not basereg in`ESP`RSP) or (0=displv) and null[indexreg] and null[basereg];
         $[null basereg;
             [mode:0; rm:5; displ:.x86util.i2le displv];
             [
@@ -150,10 +160,14 @@
                 ]
             ]
         ];
+        if[rm>=8;rex[3]:1b;rm:rm mod 8];
+        if[not rex~00000b;opcode:(0b sv 0100b,-1_rex),opcode];
         :opcode,(`byte$(mode*64)+(reg*8)+rm),displ;
     ];
-    indcode:$[(basereg=`ESP) and null indexreg; 4; .x86asm.regCode[indexreg]];
+    indcode:$[(basereg in`ESP`RSP) and null indexreg; 4; .x86asm.regCode[indexreg]];
+    if[indcode>=8;rex[2]:1b;indcode:indcode mod 8];
     basecode:$[null basereg;5;.x86asm.regCode basereg];
+    if[basecode>=8;rex[3]:1b;basecode:basecode mod 8];
     sib:`byte$(((1 2 4 8)?scale)*64)+(indcode*8)+basecode;
     displ:`byte$();
     if[displv<>0;
@@ -167,6 +181,7 @@
         ];
     ];
     mrr:`byte$(mode*64)+(reg*8)+4;
+    if[not rex~00000b;opcode:(0b sv 0100b,-1_rex),opcode];
     :opcode,mrr,sib,displ;
     {'"unknown memory addressing mode"}[];
     };
@@ -178,6 +193,7 @@
         opcode:`byte$opcode+2;
     ];
     reg:.x86asm.regCode args[1;1];
+    if[reg>=4;if[args[1;1] in .x86das.reg1alt;options,:`altreg]];
     :.x86asm.oneop[opcode;reg;args[0];options];
     };
 
@@ -206,13 +222,15 @@
             ];
         ];
         stem:.x86asm.oneop[0x80;opcodebase;args[0];`$()];
+        rexb:();
+        if[64=.x86asm.mode;if[stem[0]within 0x404f;rexb:stem 0;stem:1_stem]];
         if[(stem[0]=0x81) and args[1;1] within -128 127;
-            :0x83,(1_stem),`byte$args[1;1];
+            :rexb,0x83,(1_stem),`byte$args[1;1];
         ];
         size:4;
         if[stem[0]=0x66; size:2];
         if[stem[0]in 0x8083; size:1];
-        :stem,size#.x86util.i2le args[1;1]
+        :rexb,stem,size#.x86util.i2le args[1;1]
     ];
     opcode:`byte$8*opcodebase;
     if[(args[0;0]=`reg)and args[1;0]=`imm;if[args[0;1]in`AL`AX`EAX;
@@ -239,11 +257,11 @@
     if[(args[1;0]=`imm) and (args[0;0]=`mem);
         :.x86asm.oneop[0xc6;0;args[0];`$()],args[0;1]#.x86util.i2le args[1;1];
     ];
-    opc:0x88;
+    opcode:0x88;
     options:`$();
-    if[args[1;0]=`reg; if[args[1;1] in .x86das.sreg; opc:0x8c; options,:`no1byte]];
-    if[args[0;0]=`reg; if[args[0;1] in .x86das.sreg; opc:0x8e; args:reverse args; options,:`no1byte]];
-    :.x86asm.twoop[opc;args;options];
+    if[args[1;0]=`reg; if[args[1;1] in .x86das.sreg; opcode:0x8c; options,:`no1byte]];
+    if[args[0;0]=`reg; if[args[0;1] in .x86das.sreg; opcode:0x8e; args:reverse args; options,:`no1byte]];
+    :.x86asm.twoop[opcode;args;options];
     };
 .x86asm.handlers[`LEA]:{[addr;args].x86asm.twoop[0x8d;reverse args;`no1byte]};
 .x86asm.handlers[`PUSH]:{[addr;args]
@@ -256,7 +274,10 @@
           args[0;1]=`DS;:enlist 0x1e;
           args[0;1]=`FS;:0x0fa0;
           args[0;1]=`GS;:0x0fa8;
-        :enlist `byte$0x50+.x86asm.regCode args[0;1]]];
+        [rc:.x86asm.regCode args[0;1];
+            :$[rc>=8;0x41;()],`byte$0x50+rc mod 8]
+        ]
+    ];
     };
 .x86asm.handlers[`POP]:{[addr;args]
     if[args[0;0]=`mem; :.x86asm.oneop[0x8f;0;args 0;`no1byte]];
@@ -267,15 +288,18 @@
           args[0;1]=`DS;:enlist 0x1f;
           args[0;1]=`FS;:0x0fa1;
           args[0;1]=`GS;:0x0fa9;
-        :enlist `byte$0x58+.x86asm.regCode args[0;1]]];
+        [rc:.x86asm.regCode args[0;1];
+            :$[rc>=8;0x41;()],`byte$0x58+rc mod 8]
+        ]
+    ];
     };
 .x86asm.handlers[`INC]:{[addr;args]
-    $[args[0;1] in .x86das.reg2,.x86das.reg4;
+    $[(64<>.x86asm.mode)and args[0;1] in .x86das.reg2,.x86das.reg4;
         $[args[0;1] in .x86das.reg2;0x66;()],`byte$0x40+.x86asm.regCode args[0;1];
         .x86asm.oneop[0xfe;0;args[0];`$()]
     ]};
 .x86asm.handlers[`DEC]:{[addr;args]
-    $[args[0;1] in .x86das.reg2,.x86das.reg4;
+    $[(64<>.x86asm.mode)and args[0;1] in .x86das.reg2,.x86das.reg4;
         $[args[0;1] in .x86das.reg2;0x66;()],`byte$0x48+.x86asm.regCode args[0;1];
         .x86asm.oneop[0xfe;1;args[0];`$()]
     ]};
@@ -479,6 +503,7 @@
     raze bcs};
 
 .x86asm.unitTest:{
+    .x86asm.mode:32;
     if[not `EBP=.x86asm.parseMemArg["DWORD PTR SS:[EBP]"][3];{'"failed"}[]];
     if[not -1=.x86asm.parseArg["DWORD PTR DS:[ESI-0X01]"][6];{'"failed"}[]];
     if[not `EAX=.x86asm.parseArg["DWORD PTR DS:[4*EAX+0X05772e82]"][5];{'"failed"}[]];
@@ -505,6 +530,8 @@
     if[not 0xD2C5~.x86asm.asm[0;"ROL CH, CL"];{'"failed"}[]];
     if[not 0xC0C006~.x86asm.asm[0;"ROL AL, 0x06"];{'"failed"}[]];
     if[not 0x66D1D5~.x86asm.asm[0;"RCL BP, 0x01"];{'"failed"}[]];
+    if[not enlist[0x40]~.x86asm.asm[0;"INC EAX"];{'"failed"}[]];
+    if[not enlist[0x48]~.x86asm.asm[0;"DEC EAX"];{'"failed"}[]];
     if[not 0xFEC0~.x86asm.asm[0;"INC AL"];{'"failed"}[]];
     if[not 0x80F924~.x86asm.asm[0;"CMP CL, 0x24"];{'"failed"}[]];
     if[not 0x663D8568~.x86asm.asm[0;"CMP AX, 0x6885"];{'"failed"}[]];
@@ -520,5 +547,37 @@
     if[not "max. 1 memory argument"~.[.x86asm.asm;(0;("TEST DWORD [0x0], DWORD [0x0]"));{x}];{'"failed"}[]];
     };
 .x86asm.unitTest[];
+
+.x86asm.unitTest64Def:([]addr:();inst:();result:());
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"PUSH RDI"                        ;enlist 0x57 );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"PUSH R15"                        ;0x4157      );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"POP RDI"                         ;enlist 0x5F );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"POP R15"                         ;0x415F      );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"INC EAX"                         ;0xFFC0      );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"INC RAX"                         ;0x48FFC0    );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"DEC EAX"                         ;0xFFC8      );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR DH, DH"                      ;0x30F6      );    //or 0x32F6
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR SIL, SIL"                    ;0x4030F6    );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA EDX, DWORD PTR DS:[RAX+0x02]";0x8D5002    );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA EDX, DWORD PTR DS:[R8+0x02]" ;0x418D5002  );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA ECX, DWORD PTR DS:[RAX+RCX]" ;0x8D0C08    );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA ECX, DWORD PTR DS:[R8+RCX]"  ;0x418D0C08  );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA ECX, DWORD PTR DS:[RAX+R9]"  ;0x428D0C08  );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR EAX, ECX"                    ;0x31C8      );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR R8D, ECX"                    ;0x4131C8    );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR EAX, R9D"                    ;0x4431C8    );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR R8D, R9D"                    ;0x4531C8    );    //or 0x4533C1
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"SUB ESP, 0x28"                   ;0x83EC28    );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"SUB RSP, 0x28"                   ;0x4883EC28  );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"MOV DWORD PTR DS:[RSP+0x08], EBX";0x895C2408  );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"MOV QWORD PTR DS:[RSP+0x08], RBX";0x48895C2408);
+
+.x86asm.unitTest64:{
+    .x86asm.mode:64;
+    {if[not .x86asm.asm[x`addr;x`inst]~x`result;{'"failed"}[]]}each .x86asm.unitTest64Def;
+    };
+.x86asm.unitTest64[]
+
+.x86asm.mode:32;
 
 binaryCopyable:{[bytes]" "sv upper string bytes};
