@@ -9,3 +9,7 @@
 
 //sign-exend to 32 bits
 .x86util.sx32:{bp:0b vs x;0b sv ((32-count bp)#first bp),bp};
+
+//flip the top bit (a.k.a. "add 0N")
+.x86util.flipTopBit:{[a]
+    {0b sv not[first x],1_x}0b vs a};
