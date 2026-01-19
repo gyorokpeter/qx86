@@ -1,4 +1,5 @@
 .x86asm.parseMemPart:{[part]
+    if[part~"RIP";$[64=.x86asm.mode;:`base`RIP;'"RIP-relative addressing only available in 64-bit mode"]];
     if[part in string .x86das.reg4,.x86das.reg8;
         reg:`$part;
         if[reg in`ESP`RSP; :`base,reg];
@@ -150,7 +151,7 @@
         :opcode,(`byte$(mode*64)+(reg*8)+rm),displ;
     ];
     if[((0<>displv) and null[indexreg] and not basereg in`ESP`RSP) or (0=displv) and null[indexreg] and null[basereg];
-        $[null basereg;
+        $[basereg in``RIP;
             [mode:0; rm:5; displ:.x86util.i2le displv];
             [
                 rm:.x86asm.regCode basereg;
@@ -549,28 +550,29 @@
 .x86asm.unitTest[];
 
 .x86asm.unitTest64Def:([]addr:();inst:();result:());
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"PUSH RDI"                        ;enlist 0x57 );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"PUSH R15"                        ;0x4157      );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"POP RDI"                         ;enlist 0x5F );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"POP R15"                         ;0x415F      );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"INC EAX"                         ;0xFFC0      );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"INC RAX"                         ;0x48FFC0    );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"DEC EAX"                         ;0xFFC8      );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR DH, DH"                      ;0x30F6      );    //or 0x32F6
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR SIL, SIL"                    ;0x4030F6    );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA EDX, DWORD PTR DS:[RAX+0x02]";0x8D5002    );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA EDX, DWORD PTR DS:[R8+0x02]" ;0x418D5002  );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA ECX, DWORD PTR DS:[RAX+RCX]" ;0x8D0C08    );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA ECX, DWORD PTR DS:[R8+RCX]"  ;0x418D0C08  );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA ECX, DWORD PTR DS:[RAX+R9]"  ;0x428D0C08  );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR EAX, ECX"                    ;0x31C8      );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR R8D, ECX"                    ;0x4131C8    );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR EAX, R9D"                    ;0x4431C8    );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR R8D, R9D"                    ;0x4531C8    );    //or 0x4533C1
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"SUB ESP, 0x28"                   ;0x83EC28    );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"SUB RSP, 0x28"                   ;0x4883EC28  );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"MOV DWORD PTR DS:[RSP+0x08], EBX";0x895C2408  );
-`.x86asm.unitTest64Def insert `addr`inst`result!(0;"MOV QWORD PTR DS:[RSP+0x08], RBX";0x48895C2408);
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"PUSH RDI"                              ;enlist 0x57     );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"PUSH R15"                              ;0x4157          );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"POP RDI"                               ;enlist 0x5F     );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"POP R15"                               ;0x415F          );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"INC EAX"                               ;0xFFC0          );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"INC RAX"                               ;0x48FFC0        );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"DEC EAX"                               ;0xFFC8          );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR DH, DH"                            ;0x30F6          );    //or 0x32F6
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR SIL, SIL"                          ;0x4030F6        );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA EDX, DWORD PTR DS:[RAX+0x02]"      ;0x8D5002        );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA EDX, DWORD PTR DS:[R8+0x02]"       ;0x418D5002      );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA ECX, DWORD PTR DS:[RAX+RCX]"       ;0x8D0C08        );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA ECX, DWORD PTR DS:[R8+RCX]"        ;0x418D0C08      );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA ECX, DWORD PTR DS:[RAX+R9]"        ;0x428D0C08      );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR EAX, ECX"                          ;0x31C8          );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR R8D, ECX"                          ;0x4131C8        );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR EAX, R9D"                          ;0x4431C8        );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"XOR R8D, R9D"                          ;0x4531C8        );    //or 0x4533C1
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"SUB ESP, 0x28"                         ;0x83EC28        );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"SUB RSP, 0x28"                         ;0x4883EC28      );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"MOV DWORD PTR DS:[RSP+0x08], EBX"      ;0x895C2408      );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"MOV QWORD PTR DS:[RSP+0x08], RBX"      ;0x48895C2408    );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA RDI, QWORD PTR DS:[RIP-0x0000004b]";0x488D3DB5FFFFFF);
 
 .x86asm.unitTest64:{
     .x86asm.mode:64;

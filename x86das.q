@@ -423,7 +423,7 @@
     memregs:$[64=.x86das.mode;.x86das.reg8;.x86das.reg4];
     if[3>mode;
         basereg:memregs rm+8*prefixState[3;3];
-        if[(mode=0) and rm=5; basereg:`];
+        if[(mode=0) and rm=5; basereg:``RIP 64=.x86das.mode];
         indexreg:`;
         if[3=pf;
             indexreg:memregs index;
@@ -609,14 +609,15 @@
 .x86das.unitTest[]
 
 .x86das.unitTest64Def:([]addr:();bc:();result:());
-`.x86das.unitTest64Def insert `addr`bc`result!(0;enlist 0x57 ;"PUSH RDI"                        );
-`.x86das.unitTest64Def insert `addr`bc`result!(0;0x4032F6    ;"XOR SIL, SIL"                    );
-`.x86das.unitTest64Def insert `addr`bc`result!(0;0x418D5002  ;"LEA EDX, DWORD PTR DS:[R8+0x02]" );
-`.x86das.unitTest64Def insert `addr`bc`result!(0;0x418D0C08  ;"LEA ECX, DWORD PTR DS:[R8+RCX]"  );
-`.x86das.unitTest64Def insert `addr`bc`result!(0;0x428D0C08  ;"LEA ECX, DWORD PTR DS:[RAX+R9]"  );
-`.x86das.unitTest64Def insert `addr`bc`result!(0;0x4533C1    ;"XOR R8D, R9D"                    );
-`.x86das.unitTest64Def insert `addr`bc`result!(0;0x4883EC28  ;"SUB RSP, 0x28"                   );
-`.x86das.unitTest64Def insert `addr`bc`result!(0;0x48895C2408;"MOV QWORD PTR DS:[RSP+0x08], RBX");
+`.x86das.unitTest64Def insert `addr`bc`result!(0;enlist 0x57     ;"PUSH RDI"                              );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x4032F6        ;"XOR SIL, SIL"                          );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x418D5002      ;"LEA EDX, DWORD PTR DS:[R8+0x02]"       );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x418D0C08      ;"LEA ECX, DWORD PTR DS:[R8+RCX]"        );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x428D0C08      ;"LEA ECX, DWORD PTR DS:[RAX+R9]"        );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x4533C1        ;"XOR R8D, R9D"                          );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x4883EC28      ;"SUB RSP, 0x28"                         );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x48895C2408    ;"MOV QWORD PTR DS:[RSP+0x08], RBX"      );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x488D3DB5FFFFFF;"LEA RDI, QWORD PTR DS:[RIP-0x0000004b]");
 
 .x86das.unitTest64:{
     .x86das.mode:64;
