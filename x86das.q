@@ -284,7 +284,7 @@
     (addr;2#bc;string[instype]," ",.x86util.shex op1;instype;enlist(`imm;op1))};
 
 .x86das.with4branch:{[addr;bc;instype;instsize]
-    op1:addr+(`int$instsize)+.x86util.le2i 4#1_bc;
+    op1:$[64=.x86das.mode;`long$;::]addr+(`int$instsize)+.x86util.le2i 4#1_bc;
     (addr;5#bc;string[instype]," ",.x86util.shex op1;instype;enlist(`imm;op1))};
 
 .x86das.with1imm:{[addr;bc;instype]
@@ -618,6 +618,7 @@
 `.x86das.unitTest64Def insert `addr`bc`result!(0;0x4883EC28      ;"SUB RSP, 0x28"                         );
 `.x86das.unitTest64Def insert `addr`bc`result!(0;0x48895C2408    ;"MOV QWORD PTR DS:[RSP+0x08], RBX"      );
 `.x86das.unitTest64Def insert `addr`bc`result!(0;0x488D3DB5FFFFFF;"LEA RDI, QWORD PTR DS:[RIP-0x0000004b]");
+`.x86das.unitTest64Def insert `addr`bc`result!(52;0xE8D791FAFF   ;"CALL 0xfffffffffffa9210"               );
 
 .x86das.unitTest64:{
     .x86das.mode:64;

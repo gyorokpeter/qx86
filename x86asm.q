@@ -80,8 +80,11 @@
 
 .x86asm.parseHexNum:{[argstr]
     hx:(1+argstr?"X")_argstr;
-    if[8<count hx; {'"too large number constant"}[]];
-    0x00 sv "X"$2 cut ((8-count[hx])#"0"),hx};
+    size:8 16[64=.x86asm.mode];
+    if[size<count hx;{'"too large number constant"}[]];
+    num:0x00 sv "X"$2 cut ((size-count[hx])#"0"),hx;
+    if[2147483648<=abs num;{'"number constant out of 32-bit range"}[]];
+    `int$num};
 
 .x86asm.parseArg:{[argstr]
     if[argstr like "0X*";
@@ -573,6 +576,7 @@
 `.x86asm.unitTest64Def insert `addr`inst`result!(0;"MOV DWORD PTR DS:[RSP+0x08], EBX"      ;0x895C2408      );
 `.x86asm.unitTest64Def insert `addr`inst`result!(0;"MOV QWORD PTR DS:[RSP+0x08], RBX"      ;0x48895C2408    );
 `.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA RDI, QWORD PTR DS:[RIP-0x0000004b]";0x488D3DB5FFFFFF);
+`.x86asm.unitTest64Def insert `addr`inst`result!(52;"CALL 0xfffffffffffa9210"              ;0xE8D791FAFF    );
 
 .x86asm.unitTest64:{
     .x86asm.mode:64;
