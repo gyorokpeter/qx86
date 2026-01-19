@@ -102,6 +102,7 @@
     if[bc[0]in 0x5051525354555657;:.x86das.hardcodedArg[addr;bc;1;`PUSH;enlist(`reg;.x86das.getRegMap[prefixState]bc[0]-0x50)]];
     if[bc[0]in 0x58595a5b5c5d5e5f;:.x86das.hardcodedArg[addr;bc;1;`POP;enlist(`reg;.x86das.getRegMap[prefixState]bc[0]-0x58)]];
     if[bc[0]=0x60;:.x86das.static[addr;bc;`PUSHAD]];
+    if[bc[0]=0x63;:.x86das.twoop42[addr;bc;`MOVSXD;prefixState;`$()]];
     if[bc[0]=0x68;:.x86das.with4imm[addr;bc;`PUSH]];
     if[bc[0]=0x6a;:.x86das.with1imm[addr;bc;`PUSH]];
     '"failed to disasm: ",(first` vs .x86util.shex`int$addr),": ",.Q.s[bc];
@@ -353,7 +354,8 @@
 .x86das.regTo4:{[reg]
     p:.x86das.reg1?reg;
     if[p=count .x86das.reg1; p:.x86das.reg2?reg];
-    if[p=count .x86das.reg2; :reg];
+    if[p=count .x86das.reg2; p:.x86das.reg8?reg];
+    if[p=count .x86das.reg8; :reg];
     .x86das.reg4 p};
 
 .x86das.regTo2:{[reg]
@@ -508,9 +510,15 @@
     res};
 
 .x86das.twoop42:{[addr;bc;instype;prefixState;options]
+    datasize:$[prefixState[3;0];8;4];
     res:.x86das.twoop[addr;bc;instype;prefixState;options,`wordExtend];
-    res[4;0;1]:$[prefixState 0;.x86das.regTo2;.x86das.regTo4]res[4;0;1];
-    res[2]:first[" "vs res[2]]," ",.x86das.argsstr res[4];
+    $[datasize=4;[
+        res[4;0;1]:$[prefixState 0;.x86das.regTo2;.x86das.regTo4]res[4;0;1];
+        res[2]:first[" "vs res[2]]," ",.x86das.argsstr res[4];
+    ];[
+        res[4;1;1]:$[prefixState 0;.x86das.regTo2;.x86das.regTo4]res[4;1;1];
+        res[2]:first[" "vs res[2]]," ",.x86das.argsstr res[4];
+    ]];
     res};
 
 .x86das.twoopWithHardcoded:{[addr;bc;instype;prefixState;options;hcArg]
@@ -621,6 +629,7 @@
 `.x86das.unitTest64Def insert `addr`bc`result!(0;0x488D3DB5FFFFFF;"LEA RDI, QWORD PTR DS:[RIP-0x0000004b]");
 `.x86das.unitTest64Def insert `addr`bc`result!(52;0xE8D791FAFF   ;"CALL 0xfffffffffffa9210"               );
 `.x86das.unitTest64Def insert `addr`bc`result!(0;0x0F1F4000      ;"NOP DWORD PTR DS:[RAX]"                );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x4863C8        ;"MOVSXD RCX, EAX"                       );
 
 .x86das.unitTest64:{
     .x86das.mode:64;

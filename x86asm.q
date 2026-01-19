@@ -121,7 +121,7 @@
         rm:.x86asm.regCode arg[1];
         if[not `no1byte in options;if[arg[1] in .x86das.reg2,.x86das.reg4,.x86das.reg8; opcode[count[opcode]-1]:`byte$1+last opcode]];
         if[arg[1] in .x86das.reg2; opcode:0x66,opcode];
-        if[arg[1] in .x86das.reg8;rex[0]:1b];
+        if[(arg[1] in .x86das.reg8)or`force8byte in options;rex[0]:1b];
         if[reg>=8;rex[1]:1b;reg:reg mod 8];
         if[rm>=8;rex[3]:1b;rm:rm mod 8];
         if[not rex~00000b;opcode:(0b sv 0100b,-1_rex),opcode];
@@ -325,6 +325,7 @@
 .x86asm.handlers[`POPFW]:{[addr;args]0x669d};
 .x86asm.handlers[`MOVZX]:{[addr;args]$[args[0;1] in .x86das.reg2;0x66;()],.x86asm.twoop[0x0fb6;reverse args;`no1byte`diffsize]};
 .x86asm.handlers[`MOVSX]:{[addr;args]$[args[0;1] in .x86das.reg2;0x66;()],.x86asm.twoop[0x0fbe;reverse args;`no1byte`diffsize]};
+.x86asm.handlers[`MOVSXD]:{[addr;args].x86asm.twoop[0x63;reverse args;`no1byte`force8byte]};
 .x86asm.handlers[`ADD]:{[addr;args].x86asm.arithm[0;args]};
 .x86asm.handlers[`OR]:{[addr;args].x86asm.arithm[1;args]};
 .x86asm.handlers[`ADC]:{[addr;args].x86asm.arithm[2;args]};
@@ -578,6 +579,7 @@
 `.x86asm.unitTest64Def insert `addr`inst`result!(0;"MOV QWORD PTR DS:[RSP+0x08], RBX"      ;0x48895C2408    );
 `.x86asm.unitTest64Def insert `addr`inst`result!(0;"LEA RDI, QWORD PTR DS:[RIP-0x0000004b]";0x488D3DB5FFFFFF);
 `.x86asm.unitTest64Def insert `addr`inst`result!(52;"CALL 0xfffffffffffa9210"              ;0xE8D791FAFF    );
+`.x86asm.unitTest64Def insert `addr`inst`result!(0;"MOVSXD RCX, EAX"                       ;0x4863C8        );
 
 .x86asm.unitTest64:{
     .x86asm.mode:64;
