@@ -442,6 +442,7 @@
 .x86asm.handlers[`LAHF]:{[addr;args]enlist 0x9f};
 .x86asm.handlers[`RDTSC]:{[addr;args]0x0f31};
 .x86asm.handlers[`INT3]:{[addr;args]enlist 0xcc};
+.x86asm.handlers[`NOP]:{[addr;args].x86asm.oneop[0xf01f;0;args 0;`$()]};
 
 .x86asm.asm:{[addr;inst]
     p:" "vs upper inst;

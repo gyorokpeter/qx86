@@ -172,6 +172,7 @@
     $[bc[0] within 0x007f;.x86das.disasm00[addr;bc;prefixState];.x86das.disasm01[addr;bc;prefixState]]};
 
 .x86das.disasm10:{[addr;bc;prefixState]
+    if[bc[0]=0x1f;:.x86das.oneop[addr;bc;`NOP;prefixState;`$()]];
     if[bc[0]=0x31;:.x86das.static[addr;bc;`RDTSC]];
     if[bc[0]=0x80;:.x86das.with4branch[addr;bc;`JO;6]];
     if[bc[0]=0x81;:.x86das.with4branch[addr;bc;`JNO;6]];
@@ -619,6 +620,7 @@
 `.x86das.unitTest64Def insert `addr`bc`result!(0;0x48895C2408    ;"MOV QWORD PTR DS:[RSP+0x08], RBX"      );
 `.x86das.unitTest64Def insert `addr`bc`result!(0;0x488D3DB5FFFFFF;"LEA RDI, QWORD PTR DS:[RIP-0x0000004b]");
 `.x86das.unitTest64Def insert `addr`bc`result!(52;0xE8D791FAFF   ;"CALL 0xfffffffffffa9210"               );
+`.x86das.unitTest64Def insert `addr`bc`result!(0;0x0F1F4000      ;"NOP DWORD PTR DS:[RAX]"                );
 
 .x86das.unitTest64:{
     .x86das.mode:64;
