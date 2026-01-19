@@ -266,6 +266,16 @@
     res[1]:prefix,res[1];
     res};
 
+.x86das.disasmAll:{[addr;bc]
+    res:();
+    while[count bc;
+        res,:enlist .x86das.disasm[addr;bc];
+        c:count last[res][1];
+        addr+:c;
+        bc:c _bc;
+    ];
+    res};
+
 .x86das.stringOp:{[addr;bc;instype;rep]
     (addr;1#bc;$[null rep;"";string[rep]," "],string[instype];instype;())};
 
